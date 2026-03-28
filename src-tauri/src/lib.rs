@@ -2,7 +2,10 @@ use serde::Serialize;
 use std::fs;
 use std::path::Path;
 use std::time::SystemTime;
+use tauri::Manager;
 use walkdir::WalkDir;
+#[cfg(target_os = "windows")]
+use window_vibrancy::apply_acrylic;
 
 #[derive(Debug, Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -51,7 +54,6 @@ fn scan_images(dir: String, limit: Option<usize>) -> Result<Vec<ImageEntry>, Str
         return Err("目标路径不是文件夹".to_string());
     }
 
-    let max = limit.unwrap_or(2000);
     let mut items = Vec::new();
 
     for entry in WalkDir::new(path).follow_links(false) {
@@ -97,8 +99,10 @@ fn scan_images(dir: String, limit: Option<usize>) -> Result<Vec<ImageEntry>, Str
             modified_ms,
         });
 
-        if items.len() >= max {
-            break;
+        if let Some(max) = limit {
+            if items.len() >= max {
+                break;
+            }
         }
     }
 
@@ -111,6 +115,14 @@ pub fn run() {
     tauri::Builder::default()
         .plugin(tauri_plugin_opener::init())
         .plugin(tauri_plugin_dialog::init())
+        .setup(|app| {
+            #[cfg(target_os = "windows")]
+            if let Some(window) = app.get_webview_window("main") {
+                let _ = apply_acrylic(&window, Some((255, 255, 255, 80)));
+            }
+
+            Ok(())
+        })
         .invoke_handler(tauri::generate_handler![scan_images])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
