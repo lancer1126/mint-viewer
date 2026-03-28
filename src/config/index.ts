@@ -17,14 +17,8 @@ export const uiConfig: AppConfig = {
   },
   opacity: {
     // 主内容面板白色叠加层透明度（0~1）。
-    mainPanel: 0.08,
-    // 左侧背景第一层渐变顶部透明度（0~1）。
-    sidebarPanelTop: 0.76,
-    // 左侧背景第一层渐变底部透明度（0~1）。
-    sidebarPanelBottom: 0.88,
-    // 左侧背景第二层渐变顶部透明度（0~1）。
-    sidebarOverlayTop: 0.2,
-    // 左侧背景第二层渐变底部透明度（0~1）。
-    sidebarOverlayBottom: 0.07,
+    mainPanel: 0.4,
+    // 侧边栏背景色（建议使用 rgba/rgb 便于快速调色）。
+    sidebarBackground: "rgba(242,238,231,0.75)",
   },
 };

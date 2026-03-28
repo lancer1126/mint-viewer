@@ -10,14 +10,22 @@ import type { FlatSelectProps, ImageEntry, RecentDirectory } from "@/types";
 import { Input } from "@/components/ui/input";
 
 const appWindow = getCurrentWindow();
-const RECENT_DIRS_KEY = "mint-viewer:recent-directories";
-const MAX_RECENT_DIRS = 30;
+const FOLDER_DIRS_KEY = "mint-viewer:folder-directories";
+const RECENT_VISITS_KEY = "mint-viewer:recent-visits";
+const MAX_FOLDER_DIRS = 30;
+const MAX_RECENT_VISITS = 10;
 
 type PathTipState = {
   visible: boolean;
   text: string;
   x: number;
   y: number;
+};
+type FolderContextMenuState = {
+  visible: boolean;
+  x: number;
+  y: number;
+  path: string;
 };
 
 function FlatSelect({ prefix, value, options, open, onOpenChange, onChange }: FlatSelectProps) {
@@ -118,7 +126,8 @@ export default function App() {
   const TITLEBAR_HEIGHT = uiConfig.layout.titlebarHeight;
   const SIDEBAR_DEFAULT = Math.min(SIDEBAR_MAX, Math.max(SIDEBAR_MIN, uiConfig.layout.sidebar.defaultWidth));
   const [images, setImages] = useState<ImageEntry[]>([]);
-  const [recentDirs, setRecentDirs] = useState<RecentDirectory[]>([]);
+  const [folderDirs, setFolderDirs] = useState<RecentDirectory[]>([]);
+  const [recentVisits, setRecentVisits] = useState<RecentDirectory[]>([]);
   const [keyword, setKeyword] = useState("");
   const [currentDir, setCurrentDir] = useState("");
   const [isLoadingImages, setIsLoadingImages] = useState(false);
@@ -133,42 +142,63 @@ export default function App() {
   const [viewOpen, setViewOpen] = useState(false);
   const [sortOpen, setSortOpen] = useState(false);
   const [visibleCount, setVisibleCount] = useState(INITIAL_RENDER_COUNT);
-  const [recentDirsReady, setRecentDirsReady] = useState(false);
+  const [dirsStorageReady, setDirsStorageReady] = useState(false);
   const [pathTip, setPathTip] = useState<PathTipState>({ visible: false, text: "", x: 0, y: 0 });
+  const [folderMenu, setFolderMenu] = useState<FolderContextMenuState>({
+    visible: false,
+    x: 0,
+    y: 0,
+    path: "",
+  });
   const folderSortRef = useRef<HTMLDivElement>(null);
+  const folderMenuRef = useRef<HTMLDivElement>(null);
   const gridRef = useRef<HTMLElement>(null);
   const collapsedBtnClass = "mx-auto h-10 w-10 justify-center rounded-xl p-0";
   const iconSize = sidebarCollapsed ? 18 : 16;
   const iconStroke = sidebarCollapsed ? 2 : 1.8;
   const sidebarVisualWidth = sidebarCollapsed ? SIDEBAR_COLLAPSED : sidebarWidth;
-  const recentItems = useMemo(() => recentDirs.slice(0, 8), [recentDirs]);
+  const recentItems = useMemo(() => recentVisits.slice(0, MAX_RECENT_VISITS), [recentVisits]);
 
   useEffect(() => {
-    try {
-      const raw = localStorage.getItem(RECENT_DIRS_KEY);
-      if (!raw) return;
-      const parsed = JSON.parse(raw) as RecentDirectory[];
-      if (!Array.isArray(parsed)) return;
-      const sanitized = parsed
-        .filter((item) => Boolean(item?.path))
+    function sanitizeRecords(input: unknown): RecentDirectory[] {
+      if (!Array.isArray(input)) return [];
+      return input
+        .filter((item) => Boolean((item as RecentDirectory)?.path))
         .map((item) => ({
-          path: item.path,
-          name: item.name || getDirName(item.path),
-          lastOpenedAt: Number.isFinite(item.lastOpenedAt) ? item.lastOpenedAt : Date.now(),
-        }))
-        .sort((a, b) => b.lastOpenedAt - a.lastOpenedAt);
-      setRecentDirs(sanitized.slice(0, MAX_RECENT_DIRS));
+          path: (item as RecentDirectory).path,
+          name: (item as RecentDirectory).name || getDirName((item as RecentDirectory).path),
+          lastOpenedAt: Number.isFinite((item as RecentDirectory).lastOpenedAt)
+            ? (item as RecentDirectory).lastOpenedAt
+            : Date.now(),
+        }));
+    }
+
+    try {
+      const rawFolders = localStorage.getItem(FOLDER_DIRS_KEY);
+      const parsedFolders = rawFolders ? (JSON.parse(rawFolders) as unknown) : [];
+      const sanitizedFolders = sanitizeRecords(parsedFolders).sort((a, b) => b.lastOpenedAt - a.lastOpenedAt);
+      setFolderDirs(sanitizedFolders.slice(0, MAX_FOLDER_DIRS));
+
+      const rawRecent = localStorage.getItem(RECENT_VISITS_KEY);
+      const parsedRecent = rawRecent ? (JSON.parse(rawRecent) as unknown) : [];
+      const sanitizedRecent = sanitizeRecords(parsedRecent).sort((a, b) => b.lastOpenedAt - a.lastOpenedAt);
+      setRecentVisits(sanitizedRecent.slice(0, MAX_RECENT_VISITS));
     } catch {
       // Ignore invalid local cache.
     } finally {
-      setRecentDirsReady(true);
+      setDirsStorageReady(true);
     }
   }, []);
 
   useEffect(() => {
-    if (!recentDirsReady) return;
-    localStorage.setItem(RECENT_DIRS_KEY, JSON.stringify(recentDirs));
-  }, [recentDirs, recentDirsReady]);
+    if (!dirsStorageReady) return;
+    localStorage.setItem(FOLDER_DIRS_KEY, JSON.stringify(folderDirs));
+  }, [folderDirs, dirsStorageReady]);
+
+  useEffect(() => {
+    if (!dirsStorageReady) return;
+    localStorage.setItem(RECENT_VISITS_KEY, JSON.stringify(recentVisits));
+  }, [recentVisits, dirsStorageReady]);
 
   const displayedImages = useMemo(() => {
     const kw = keyword.trim().toLowerCase();
@@ -189,14 +219,14 @@ export default function App() {
   }, [images, keyword, sortMode]);
   const renderedImages = useMemo(() => displayedImages.slice(0, visibleCount), [displayedImages, visibleCount]);
   const sortedFolderDirs = useMemo(() => {
-    const items = [...recentDirs];
+    const items = [...folderDirs];
     if (folderSortMode === "名称") {
       items.sort((a, b) => a.name.localeCompare(b.name, "zh-Hans-CN"));
       return items;
     }
     items.sort((a, b) => b.lastOpenedAt - a.lastOpenedAt);
     return items;
-  }, [recentDirs, folderSortMode]);
+  }, [folderDirs, folderSortMode]);
 
   useEffect(() => {
     setVisibleCount(INITIAL_RENDER_COUNT);
@@ -217,6 +247,17 @@ export default function App() {
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, [folderSortOpen]);
 
+  useEffect(() => {
+    if (!folderMenu.visible) return;
+    function handleClickOutside(e: MouseEvent) {
+      if (!folderMenuRef.current?.contains(e.target as Node)) {
+        setFolderMenu((prev) => ({ ...prev, visible: false }));
+      }
+    }
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, [folderMenu.visible]);
+
   async function loadImagesForDirectory(dirPath: string) {
     setIsLoadingImages(true);
     setCurrentDir(dirPath);
@@ -224,6 +265,7 @@ export default function App() {
     try {
       const result = await invoke<ImageEntry[]>("scan_images", { dir: dirPath });
       setImages(result);
+      rememberRecentVisit(dirPath);
     } catch (err) {
       setImages([]);
       const message = err instanceof Error ? err.message : "读取目录失败";
@@ -255,16 +297,54 @@ export default function App() {
     setPathTip((prev) => ({ ...prev, visible: false }));
   }
 
-  function rememberDirectory(dirPath: string) {
+  function openFolderContextMenu(e: ReactMouseEvent<HTMLElement>, path: string) {
+    e.preventDefault();
+    setPathTip((prev) => ({ ...prev, visible: false }));
+    const menuWidth = 112;
+    const menuHeight = 78;
+    const offsetX = 14;
+    const offsetY = 14;
+    const nextX = Math.min(e.clientX + offsetX, window.innerWidth - menuWidth - 8);
+    const nextY = Math.min(e.clientY + offsetY, window.innerHeight - menuHeight - 8);
+    setFolderMenu({
+      visible: true,
+      x: Math.max(8, nextX),
+      y: Math.max(8, nextY),
+      path,
+    });
+  }
+
+  function rememberFolderDirectory(dirPath: string) {
     const now = Date.now();
-    setRecentDirs((prev) => {
+    setFolderDirs((prev) => {
       const next: RecentDirectory = {
         path: dirPath,
         name: getDirName(dirPath),
         lastOpenedAt: now,
       };
-      return [next, ...prev.filter((item) => item.path !== dirPath)].slice(0, MAX_RECENT_DIRS);
+      return [next, ...prev.filter((item) => item.path !== dirPath)].slice(0, MAX_FOLDER_DIRS);
     });
+  }
+
+  function rememberRecentVisit(dirPath: string) {
+    const now = Date.now();
+    setRecentVisits((prev) => {
+      const next: RecentDirectory = {
+        path: dirPath,
+        name: getDirName(dirPath),
+        lastOpenedAt: now,
+      };
+      return [next, ...prev.filter((item) => item.path !== dirPath)].slice(0, MAX_RECENT_VISITS);
+    });
+  }
+
+  function removeDirectory(path: string) {
+    setFolderDirs((prev) => prev.filter((item) => item.path !== path));
+    if (currentDir === path) {
+      setCurrentDir("");
+      setImages([]);
+    }
+    setFolderMenu((prev) => ({ ...prev, visible: false }));
   }
 
   async function addDirectory() {
@@ -275,7 +355,7 @@ export default function App() {
     });
 
     if (!selected || Array.isArray(selected)) return;
-    rememberDirectory(selected);
+    rememberFolderDirectory(selected);
     await loadImagesForDirectory(selected);
   }
 
@@ -330,16 +410,9 @@ export default function App() {
   return (
     <div className="relative flex h-screen w-screen flex-col overflow-hidden bg-transparent text-slate-900">
       <div
-        className="pointer-events-none absolute inset-0 z-0 backdrop-blur-[18px]"
+        className="pointer-events-none absolute inset-0 z-0 backdrop-blur-[10px]"
         style={{
-          backgroundImage: `linear-gradient(180deg, rgba(247,244,239,${uiConfig.opacity.sidebarPanelTop}), rgba(241,237,231,${uiConfig.opacity.sidebarPanelBottom}))`,
-          clipPath: `polygon(0 0, 100% 0, 100% ${TITLEBAR_HEIGHT}px, ${sidebarVisualWidth}px ${TITLEBAR_HEIGHT}px, ${sidebarVisualWidth}px 100%, 0 100%)`,
-        }}
-      />
-      <div
-        className="pointer-events-none absolute inset-0 z-0"
-        style={{
-          backgroundImage: `linear-gradient(180deg, rgba(255,255,255,${uiConfig.opacity.sidebarOverlayTop}), rgba(255,255,255,${uiConfig.opacity.sidebarOverlayBottom}))`,
+          backgroundColor: uiConfig.opacity.sidebarBackground,
           clipPath: `polygon(0 0, 100% 0, 100% ${TITLEBAR_HEIGHT}px, ${sidebarVisualWidth}px ${TITLEBAR_HEIGHT}px, ${sidebarVisualWidth}px 100%, 0 100%)`,
         }}
       />
@@ -358,8 +431,9 @@ export default function App() {
               void maximizeWindow();
             }}
           >
-            <span className="truncate">
-              app
+            <span className="flex items-center gap-2">
+              <img src="/app-icon.png" alt="" className="h-5 w-5 object-contain" />
+              <span className="truncate text-[14px] font-semibold">mint</span>
             </span>
           </div>
 
@@ -455,7 +529,7 @@ export default function App() {
             const isExpanded = Boolean(expandedMenus[item.key]);
             const isHovered = hoveredMenu === item.key;
             const showChevron = isExpanded || isHovered;
-            const hasChildren = item.key === "folders" ? recentDirs.length > 0 : recentItems.length > 0;
+            const hasChildren = item.key === "folders" ? folderDirs.length > 0 : recentItems.length > 0;
             const Icon = item.icon;
 
             return (
@@ -544,6 +618,7 @@ export default function App() {
                           key={dir.path}
                           onMouseEnter={(e) => showPathTip(dir.path, e)}
                           onMouseLeave={hidePathTip}
+                          onContextMenu={(e) => openFolderContextMenu(e, dir.path)}
                           className={`group flex items-center gap-1 rounded-lg pr-1 transition hover:bg-black/[0.03] ${
                             currentDir === dir.path ? "bg-black/[0.04]" : ""
                           }`}
@@ -642,7 +717,7 @@ export default function App() {
       </aside>
 
       <main
-        className="relative z-10 ml-0 flex min-w-0 flex-1 flex-col overflow-hidden rounded-l-[28px] backdrop-blur-[18px]"
+        className="relative z-10 ml-0 flex min-w-0 flex-1 flex-col overflow-hidden rounded-none backdrop-blur-[18px]"
         style={{ backgroundColor: `rgba(255,255,255,${uiConfig.opacity.mainPanel})` }}
       >
         {isLoadingImages && (
@@ -653,100 +728,115 @@ export default function App() {
           </div>
         )}
 
-        <header className="relative z-40 flex min-h-[48px] items-center justify-between gap-3 px-4">
-          <div className="flex items-center gap-1">
-            <FlatSelect
-              prefix="视图："
-              value={viewMode}
-              options={["网格视图", "列表视图"]}
-              open={viewOpen}
-              onOpenChange={(open) => {
-                setViewOpen(open);
-                if (open) setSortOpen(false);
-              }}
-              onChange={setViewMode}
-            />
-            <FlatSelect
-              prefix="排序："
-              value={sortMode}
-              options={["修改时间", "名称", "大小", "类型"]}
-              open={sortOpen}
-              onOpenChange={(open) => {
-                setSortOpen(open);
-                if (open) setViewOpen(false);
-              }}
-              onChange={setSortMode}
-            />
-            <div className="ml-0.5 flex shrink-0 items-center gap-1.5 rounded-xl bg-transparent px-2.5 py-1.5 transition hover:bg-black/[0.05]">
-              <span className="shrink-0 whitespace-nowrap text-xs text-slate-500">缩放</span>
-              <input
-                type="range"
-                min={80}
-                max={240}
-                defaultValue={160}
-                className="h-1 w-20 cursor-pointer appearance-none rounded-full bg-slate-300/45 accent-slate-600"
+        {!currentDir ? (
+          <section className="relative z-10 flex flex-1 items-center justify-center px-6">
+            <div className="flex flex-col items-center gap-4 text-center">
+              <img
+                src="/app-icon.png"
+                alt="mint viewer"
+                className="h-20 w-20 object-contain"
               />
+              <span className="text-base text-slate-600">请选择目录后开始浏览图片。</span>
             </div>
-          </div>
-
-          <div className="flex items-center gap-2">
-            <Input
-              value={keyword}
-              onChange={(e) => setKeyword(e.target.value)}
-              placeholder="搜索当前目录..."
-              className="h-8 w-[260px] rounded-xl border-0 border-transparent bg-transparent text-slate-700 shadow-none outline-none placeholder:text-slate-500 transition hover:bg-black/[0.05] focus:bg-black/[0.05] focus-visible:ring-0 focus-visible:ring-transparent focus-visible:ring-offset-0 focus-visible:shadow-none"
-            />
-          </div>
-        </header>
-
-        <section
-          ref={gridRef}
-          onScroll={handleGridScroll}
-          className="main-scrollbar relative z-10 grid auto-rows-[240px] flex-1 grid-cols-[repeat(auto-fill,minmax(164px,1fr))] gap-4 overflow-auto px-5 pb-4 pt-3"
-        >
-          {!isLoadingImages && displayedImages.length === 0 && (
-            <div className="col-span-full rounded-2xl bg-white/20 px-4 py-3 text-sm text-slate-600">
-              {currentDir ? "当前目录下没有匹配的图片。" : "请选择目录后开始浏览图片。"}
-            </div>
-          )}
-          {renderedImages.map((item) => (
-            <article
-              key={item.path}
-              className="flex h-[240px] flex-col overflow-hidden rounded-[22px] border border-black/8 bg-white/42 shadow-[0_10px_24px_rgba(100,116,139,0.12)] transition duration-200 hover:-translate-y-0.5 hover:bg-white/50"
-            >
-              <div className={`h-[164px] w-full overflow-hidden bg-gradient-to-br ${colorClassByExt(item.ext)}`}>
-                <img
-                  src={convertFileSrc(item.path)}
-                  alt={item.name}
-                  loading="lazy"
-                  className="block h-full w-full object-cover"
-                  onError={(e) => {
-                    e.currentTarget.style.opacity = "0";
+          </section>
+        ) : (
+          <>
+            <header className="relative z-40 flex min-h-[48px] items-center justify-between gap-3 px-4">
+              <div className="flex items-center gap-1">
+                <FlatSelect
+                  prefix="视图："
+                  value={viewMode}
+                  options={["网格视图", "列表视图"]}
+                  open={viewOpen}
+                  onOpenChange={(open) => {
+                    setViewOpen(open);
+                    if (open) setSortOpen(false);
                   }}
+                  onChange={setViewMode}
+                />
+                <FlatSelect
+                  prefix="排序："
+                  value={sortMode}
+                  options={["修改时间", "名称", "大小", "类型"]}
+                  open={sortOpen}
+                  onOpenChange={(open) => {
+                    setSortOpen(open);
+                    if (open) setViewOpen(false);
+                  }}
+                  onChange={setSortMode}
+                />
+                <div className="ml-0.5 flex shrink-0 items-center gap-1.5 rounded-xl bg-transparent px-2.5 py-1.5 transition hover:bg-black/[0.05]">
+                  <span className="shrink-0 whitespace-nowrap text-xs text-slate-500">缩放</span>
+                  <input
+                    type="range"
+                    min={80}
+                    max={240}
+                    defaultValue={160}
+                    className="h-1 w-20 cursor-pointer appearance-none rounded-full bg-slate-300/45 accent-slate-600"
+                  />
+                </div>
+              </div>
+
+              <div className="flex items-center gap-2">
+                <Input
+                  value={keyword}
+                  onChange={(e) => setKeyword(e.target.value)}
+                  placeholder="搜索当前目录..."
+                  className="h-8 w-[260px] rounded-xl border-0 border-transparent bg-transparent text-slate-700 shadow-none outline-none placeholder:text-slate-500 transition hover:bg-black/[0.05] focus:bg-black/[0.05] focus-visible:ring-0 focus-visible:ring-transparent focus-visible:ring-offset-0 focus-visible:shadow-none"
                 />
               </div>
-              <div className="p-3">
-                <div className="truncate text-xs font-semibold text-slate-900" title={item.name}>
-                  {item.name}
-                </div>
-                <div className="mt-2 flex items-center justify-between text-[11px] text-slate-700">
-                  <span>{formatSize(item.size)}</span>
-                  <span className="rounded-full bg-white/55 px-2 py-0.5 text-slate-800 shadow-[inset_0_0_0_1px_rgba(15,23,42,0.08)]">{item.ext}</span>
-                </div>
-              </div>
-            </article>
-          ))}
-          {!isLoadingImages && renderedImages.length < displayedImages.length && (
-            <div className="col-span-full rounded-2xl bg-white/16 px-4 py-2 text-center text-xs text-slate-500">
-              已加载 {renderedImages.length} / {displayedImages.length}，继续下滑加载更多...
-            </div>
-          )}
-        </section>
+            </header>
 
-        <footer className="relative z-20 flex min-h-[30px] shrink-0 items-center justify-between gap-2 px-4 py-1 text-[11px] leading-none text-slate-600">
-          <span>当前目录：{currentDir || "未选择"}</span>
-          <span>文件数量：{displayedImages.length}</span>
-        </footer>
+            <section
+              ref={gridRef}
+              onScroll={handleGridScroll}
+              className="main-scrollbar relative z-10 grid auto-rows-[240px] flex-1 grid-cols-[repeat(auto-fill,minmax(164px,1fr))] gap-4 overflow-auto px-5 pb-4 pt-3"
+            >
+              {!isLoadingImages && displayedImages.length === 0 && (
+                <div className="col-span-full rounded-2xl bg-white/20 px-4 py-3 text-sm text-slate-600">
+                  当前目录下没有匹配的图片。
+                </div>
+              )}
+              {renderedImages.map((item) => (
+                <article
+                  key={item.path}
+                  className="flex h-[240px] flex-col overflow-hidden rounded-[22px] border border-black/8 bg-white/42 shadow-[0_10px_24px_rgba(100,116,139,0.12)] transition duration-200 hover:-translate-y-0.5 hover:bg-white/50"
+                >
+                  <div className={`h-[164px] w-full overflow-hidden bg-gradient-to-br ${colorClassByExt(item.ext)}`}>
+                    <img
+                      src={convertFileSrc(item.path)}
+                      alt={item.name}
+                      loading="lazy"
+                      className="block h-full w-full object-cover"
+                      onError={(e) => {
+                        e.currentTarget.style.opacity = "0";
+                      }}
+                    />
+                  </div>
+                  <div className="p-3">
+                    <div className="truncate text-xs font-semibold text-slate-900" title={item.name}>
+                      {item.name}
+                    </div>
+                    <div className="mt-2 flex items-center justify-between text-[11px] text-slate-700">
+                      <span>{formatSize(item.size)}</span>
+                      <span className="rounded-full bg-white/55 px-2 py-0.5 text-slate-800 shadow-[inset_0_0_0_1px_rgba(15,23,42,0.08)]">{item.ext}</span>
+                    </div>
+                  </div>
+                </article>
+              ))}
+              {!isLoadingImages && renderedImages.length < displayedImages.length && (
+                <div className="col-span-full rounded-2xl bg-white/16 px-4 py-2 text-center text-xs text-slate-500">
+                  已加载 {renderedImages.length} / {displayedImages.length}，继续下滑加载更多...
+                </div>
+              )}
+            </section>
+
+            <footer className="relative z-20 flex min-h-[30px] shrink-0 items-center justify-between gap-2 px-4 py-1 text-[11px] leading-none text-slate-600">
+              <span>当前目录：{currentDir}</span>
+              <span>文件数量：{displayedImages.length}</span>
+            </footer>
+          </>
+        )}
       </main>
       </div>
       {pathTip.visible && (
@@ -755,6 +845,32 @@ export default function App() {
           style={{ left: `${pathTip.x}px`, top: `${pathTip.y}px` }}
         >
           <span className={pathTip.text.length > 96 ? "break-all" : "whitespace-nowrap"}>{pathTip.text}</span>
+        </div>
+      )}
+      {folderMenu.visible && (
+        <div
+          ref={folderMenuRef}
+          className="context-menu-enter fixed z-[1000] min-w-[96px] overflow-hidden rounded-lg bg-[rgba(241,237,231,0.96)] shadow-[inset_0_0_0_1px_rgba(148,163,184,0.22),0_10px_26px_rgba(100,116,139,0.18)]"
+          style={{ left: `${folderMenu.x}px`, top: `${folderMenu.y}px` }}
+        >
+          <button
+            type="button"
+            onClick={async () => {
+              const path = folderMenu.path;
+              setFolderMenu((prev) => ({ ...prev, visible: false }));
+              await openDirectoryInExplorer(path);
+            }}
+            className="block w-full px-3 py-2 text-left text-sm text-slate-700 transition hover:bg-black/[0.05]"
+          >
+            打开目录
+          </button>
+          <button
+            type="button"
+            onClick={() => removeDirectory(folderMenu.path)}
+            className="block w-full px-3 py-2 text-left text-sm text-red-600 transition hover:bg-red-500/10"
+          >
+            移除
+          </button>
         </div>
       )}
     </div>

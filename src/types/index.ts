@@ -10,10 +10,7 @@ export type AppConfig = {
   };
   opacity: {
     mainPanel: number;
-    sidebarPanelTop: number;
-    sidebarPanelBottom: number;
-    sidebarOverlayTop: number;
-    sidebarOverlayBottom: number;
+    sidebarBackground: string;
   };
 };
 
