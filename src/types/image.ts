@@ -5,3 +5,8 @@ export type ImageEntry = {
   size: number;
   modifiedMs: number;
 };
+
+export type ViewerImage = {
+  name: string;
+  path: string;
+};

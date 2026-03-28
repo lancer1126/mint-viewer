@@ -3,8 +3,8 @@ import { getCurrentWindow } from "@tauri-apps/api/window";
 import { uiConfig } from "@/config";
 import { useDirectoryStore } from "@/hooks/useDirectoryStore";
 import { useImageBrowser } from "@/hooks/useImageBrowser";
-import { pickDirectory, revealDirectory, showErrorPopup } from "@/services/tauriApi";
-import type { FolderContextMenuState, PathTipState } from "@/types";
+import { openImageDetailWindow, pickDirectory, revealDirectory, showErrorPopup } from "@/services/tauriApi";
+import type { FolderContextMenuState, PathTipState, ViewerImage } from "@/types";
 import { Sidebar } from "@/components/layout/Sidebar";
 import { TitleBar } from "@/components/layout/TitleBar";
 import { TopToolbar } from "@/components/layout/TopToolbar";
@@ -298,6 +298,18 @@ export function MainPage() {
                 isLoadingImages={isLoadingImages}
                 gridRef={gridRef}
                 onScroll={handleGridScroll}
+                onImageClick={async (_item, index) => {
+                  try {
+                    const viewerImages: ViewerImage[] = displayedImages.map((img) => ({
+                      path: img.path,
+                      name: img.name,
+                    }));
+                    await openImageDetailWindow(viewerImages, index);
+                  } catch (err) {
+                    const text = err instanceof Error ? err.message : String(err);
+                    await showErrorPopup(`打开图片详情失败：${text}`);
+                  }
+                }}
               />
 
               <BottomStatusBar currentDir={currentDir} count={displayedImages.length} />

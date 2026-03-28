@@ -9,9 +9,10 @@ type ImageGridProps = {
   isLoadingImages: boolean;
   gridRef: RefObject<HTMLElement | null>;
   onScroll: (e: UIEvent<HTMLElement>) => void;
+  onImageClick: (item: ImageEntry, index: number) => void;
 };
 
-export function ImageGrid({ images, renderedImages, isLoadingImages, gridRef, onScroll }: ImageGridProps) {
+export function ImageGrid({ images, renderedImages, isLoadingImages, gridRef, onScroll, onImageClick }: ImageGridProps) {
   return (
     <section
       ref={gridRef}
@@ -21,10 +22,11 @@ export function ImageGrid({ images, renderedImages, isLoadingImages, gridRef, on
       {!isLoadingImages && images.length === 0 && (
         <div className="col-span-full rounded-2xl bg-white/20 px-4 py-3 text-sm text-slate-600">当前目录下没有匹配的图片。</div>
       )}
-      {renderedImages.map((item) => (
+      {renderedImages.map((item, index) => (
         <article
           key={item.path}
-          className="flex h-[240px] flex-col overflow-hidden rounded-[22px] border border-black/8 bg-white/42 shadow-[0_10px_24px_rgba(100,116,139,0.12)] transition duration-200 hover:-translate-y-0.5 hover:bg-white/50"
+          onClick={() => onImageClick(item, index)}
+          className="flex h-[240px] cursor-zoom-in flex-col overflow-hidden rounded-[22px] border border-black/8 bg-white/42 shadow-[0_10px_24px_rgba(100,116,139,0.12)] transition duration-200 hover:-translate-y-0.5 hover:bg-white/50"
         >
           <div className={`h-[164px] w-full overflow-hidden bg-gradient-to-br ${colorClassByExt(item.ext)}`}>
             <img
