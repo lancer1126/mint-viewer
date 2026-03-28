@@ -24,7 +24,7 @@ export function TitleBar({ onMinimize, onMaximize, onClose, onStartDrag }: Title
           }}
         >
           <span className="flex items-center gap-2">
-            <img src="/app-icon.png" alt="" className="h-5 w-5 object-contain" />
+            <img src="/app-icon.png" alt="" className="h-7 w-7 object-contain" />
             <span className="truncate text-[14px] font-semibold">mint</span>
           </span>
         </div>

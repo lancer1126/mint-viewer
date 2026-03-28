@@ -26,7 +26,7 @@ export function ImageGrid({ images, renderedImages, isLoadingImages, gridRef, on
         <article
           key={item.path}
           onClick={() => onImageClick(item, index)}
-          className="flex h-[240px] cursor-zoom-in flex-col overflow-hidden rounded-[22px] border border-black/8 bg-white/42 shadow-[0_10px_24px_rgba(100,116,139,0.12)] transition duration-200 hover:-translate-y-0.5 hover:bg-white/50"
+          className="flex h-[240px] flex-col overflow-hidden rounded-[22px] border border-black/8 bg-white/42 shadow-[0_10px_24px_rgba(100,116,139,0.12)] transition duration-200 hover:-translate-y-0.5 hover:bg-white/50"
         >
           <div className={`h-[164px] w-full overflow-hidden bg-gradient-to-br ${colorClassByExt(item.ext)}`}>
             <img
