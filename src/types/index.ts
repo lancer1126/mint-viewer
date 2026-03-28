@@ -1,38 +1,4 @@
-export type AppConfig = {
-  layout: {
-    titlebarHeight: number;
-    sidebar: {
-      defaultWidth: number;
-      minWidth: number;
-      maxWidth: number;
-      collapsedWidth: number;
-    };
-  };
-  opacity: {
-    mainPanel: number;
-    sidebarBackground: string;
-  };
-};
-
-export type ImageEntry = {
-  name: string;
-  path: string;
-  ext: string;
-  size: number;
-  modifiedMs: number;
-};
-
-export type RecentDirectory = {
-  path: string;
-  name: string;
-  lastOpenedAt: number;
-};
-
-export type FlatSelectProps = {
-  prefix: string;
-  value: string;
-  options: string[];
-  open: boolean;
-  onOpenChange: (open: boolean) => void;
-  onChange: (value: string) => void;
-};
+export type { AppConfig } from "@/types/app";
+export type { RecentDirectory } from "@/types/directory";
+export type { ImageEntry } from "@/types/image";
+export type { FlatSelectProps, FolderContextMenuState, PathTipState } from "@/types/ui";
