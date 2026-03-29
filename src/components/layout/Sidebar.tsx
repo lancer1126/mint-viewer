@@ -1,4 +1,4 @@
-import { ArrowUpDown, ChevronRight, Folder, FolderOpen, FolderPlus, History, PanelLeftClose, PanelLeftOpen, Settings } from "lucide-react";
+import { ArrowUpDown, ChevronRight, Folder, FolderOpen, History, PanelLeftClose, PanelLeftOpen, Settings, BookOpen } from "lucide-react";
 import type { MouseEvent as ReactMouseEvent, RefObject } from "react";
 import type { RecentDirectory } from "@/types";
 
@@ -81,7 +81,7 @@ export function Sidebar({
               onClick={onAddDirectory}
               className="flex flex-1 items-center gap-2 rounded-xl px-3 py-2 text-left text-[14px] font-medium text-slate-700 transition hover:bg-black/[0.035]"
             >
-              <FolderPlus size={16} strokeWidth={1.8} />
+              <BookOpen size={16} strokeWidth={1.8} />
               <span>添加目录</span>
             </button>
             <button

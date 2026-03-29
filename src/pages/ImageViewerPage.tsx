@@ -65,6 +65,14 @@ export function ImageViewerPage() {
   const hasPrev = index > 0;
   const hasNext = index < images.length - 1;
 
+  async function startWindowDrag() {
+    try {
+      await viewerWindow.startDragging();
+    } catch {
+      // Ignore drag failures.
+    }
+  }
+
   async function closeViewerWindow() {
     try {
       await viewerWindow.destroy();
@@ -124,7 +132,16 @@ export function ImageViewerPage() {
 
   return (
     <div className="relative h-screen w-screen overflow-hidden bg-[rgba(23,27,34,0.72)] text-slate-100">
-      <div className="absolute left-1/2 top-4 z-20 w-[min(82vw,760px)] -translate-x-1/2 text-center">
+      <div
+        className="absolute left-0 top-0 z-10 h-14 w-full"
+        onMouseDown={(e) => {
+          if (e.button !== 0) return;
+          if (e.detail >= 2) return;
+          void startWindowDrag();
+        }}
+      />
+
+      <div className="pointer-events-none absolute left-1/2 top-4 z-20 w-[min(82vw,760px)] -translate-x-1/2 text-center">
         <span className="block truncate text-sm text-slate-200">{current.name}</span>
       </div>
 

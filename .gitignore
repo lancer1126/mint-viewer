@@ -24,3 +24,5 @@ dist-ssr
 *.sw?
 
 demo.html
+
+.pnpm-store/
