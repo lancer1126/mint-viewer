@@ -75,14 +75,14 @@ export function ImageViewerPage() {
 
   async function closeViewerWindow() {
     try {
-      await viewerWindow.destroy();
+      await viewerWindow.hide();
       const mainWindow = await Window.getByLabel("main");
       if (mainWindow) {
         await mainWindow.setFocus();
       }
     } catch {
       try {
-        await viewerWindow.close();
+        await viewerWindow.hide();
       } catch {
         // Ignore hard-close fallback errors.
       }
@@ -101,6 +101,7 @@ export function ImageViewerPage() {
     }).then((fn) => {
       unlisten = fn;
     });
+    void Window.getByLabel("main").then((mainWindow) => mainWindow?.emit("mint://viewer-ready"));
 
     function handleKeydown(e: KeyboardEvent) {
       if (e.key === "ArrowLeft" && hasPrev) {

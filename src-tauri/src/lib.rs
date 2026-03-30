@@ -5,7 +5,7 @@ use std::time::SystemTime;
 use tauri::Manager;
 use walkdir::WalkDir;
 #[cfg(target_os = "windows")]
-use window_vibrancy::apply_acrylic;
+use window_vibrancy::apply_mica;
 
 #[derive(Debug, Serialize)]
 #[serde(rename_all = "camelCase")]
@@ -118,7 +118,7 @@ pub fn run() {
         .setup(|app| {
             #[cfg(target_os = "windows")]
             if let Some(window) = app.get_webview_window("main") {
-                let _ = apply_acrylic(&window, Some((255, 255, 255, 80)));
+                let _ = apply_mica(&window, Some(false));
             }
 
             Ok(())

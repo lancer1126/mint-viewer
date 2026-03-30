@@ -17,8 +17,8 @@ export const uiConfig: AppConfig = {
   },
   opacity: {
     // 主内容面板白色叠加层透明度（0~1）。
-    mainPanel: 0.65,
-    // 侧边栏背景色（建议使用 rgba/rgb 便于快速调色）。
-    sidebarBackground: "rgba(242,238,231,0.75)",
+    mainPanel: 0.58,
+    // 侧边栏背景色：进一步减弱白色蒙版，让系统 Mica 的染色更明显。
+    sidebarBackground: "rgba(248,245,240,0.18)",
   },
 };

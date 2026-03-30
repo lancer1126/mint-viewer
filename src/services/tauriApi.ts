@@ -2,8 +2,18 @@ import { invoke } from "@tauri-apps/api/core";
 import { message, open } from "@tauri-apps/plugin-dialog";
 import { revealItemInDir } from "@tauri-apps/plugin-opener";
 import { WebviewWindow } from "@tauri-apps/api/webviewWindow";
-import { Window } from "@tauri-apps/api/window";
+import { getCurrentWindow, Window } from "@tauri-apps/api/window";
 import type { ImageEntry, ViewerImage } from "@/types";
+
+const IMAGE_VIEWER_LABEL = "image-viewer";
+const IMAGE_VIEWER_BASE_QUERY = new URLSearchParams({
+  viewer: "1",
+  preload: "1",
+}).toString();
+
+let viewerWindowPromise: Promise<Window> | null = null;
+let viewerReadyPromise: Promise<void> | null = null;
+let viewerReady = false;
 
 export async function pickDirectory() {
   return open({
@@ -42,30 +52,28 @@ function createImageViewerSession(images: ViewerImage[], initialIndex: number): 
   return sessionId;
 }
 
-export function openImageDetailWindow(images: ViewerImage[], initialIndex: number): Promise<void> {
-  const current = images[initialIndex];
-  if (!current) {
-    return Promise.reject(new Error("未找到要预览的图片"));
+function getImageViewerUrl(sessionId?: string): string {
+  const params = new URLSearchParams(IMAGE_VIEWER_BASE_QUERY);
+  if (sessionId) {
+    params.set("session", sessionId);
+  }
+  return `${window.location.pathname}?${params.toString()}`;
+}
+
+async function ensureImageViewerWindow(): Promise<Window> {
+  if (viewerWindowPromise) {
+    return viewerWindowPromise;
   }
 
-  const sessionId = createImageViewerSession(images, initialIndex);
-  const label = "image-viewer";
-  const query = new URLSearchParams({
-    viewer: "1",
-    session: sessionId,
-  }).toString();
-  const url = `${window.location.pathname}?${query}`;
-  return Window.getByLabel(label).then(async (existingWindow) => {
+  viewerWindowPromise = Window.getByLabel(IMAGE_VIEWER_LABEL).then((existingWindow) => {
     if (existingWindow) {
-      await existingWindow.emit("mint://viewer-session", { sessionId });
-      await existingWindow.setFocus();
-      return;
+      return existingWindow;
     }
 
-    return new Promise<void>((resolve, reject) => {
-      const win = new WebviewWindow(label, {
-        url,
-        title: `mint - ${current.name}`,
+    return new Promise<Window>((resolve, reject) => {
+      const win = new WebviewWindow(IMAGE_VIEWER_LABEL, {
+        url: getImageViewerUrl(),
+        title: "mint",
         width: 980,
         height: 680,
         minWidth: 520,
@@ -74,17 +82,67 @@ export function openImageDetailWindow(images: ViewerImage[], initialIndex: numbe
         resizable: true,
         decorations: false,
         transparent: false,
-        focus: true,
+        visible: false,
+        focus: false,
       });
       const unlistenError = win.once("tauri://error", (event) => {
+        viewerWindowPromise = null;
+        viewerReadyPromise = null;
+        viewerReady = false;
         unlistenCreated.then((fn) => fn());
         reject(new Error(String(event.payload)));
       });
       const unlistenCreated = win.once("tauri://created", () => {
         unlistenError.then((fn) => fn());
+        resolve(win);
+      });
+    });
+  });
+
+  return viewerWindowPromise;
+}
+
+async function waitForImageViewerReady(): Promise<void> {
+  if (viewerReady) {
+    return;
+  }
+  if (!viewerReadyPromise) {
+    viewerReadyPromise = new Promise<void>((resolve) => {
+      const mainWindow = getCurrentWindow();
+      const timeoutId = window.setTimeout(() => {
+        viewerReady = true;
+        resolve();
+      }, 1200);
+
+      void mainWindow.once("mint://viewer-ready", () => {
+        window.clearTimeout(timeoutId);
+        viewerReady = true;
         resolve();
       });
     });
+  }
+
+  await viewerReadyPromise;
+}
+
+export async function warmUpImageDetailWindow() {
+  await ensureImageViewerWindow();
+  await waitForImageViewerReady();
+}
+
+export function openImageDetailWindow(images: ViewerImage[], initialIndex: number): Promise<void> {
+  const current = images[initialIndex];
+  if (!current) {
+    return Promise.reject(new Error("未找到要预览的图片"));
+  }
+
+  const sessionId = createImageViewerSession(images, initialIndex);
+  return ensureImageViewerWindow().then(async (viewerWindow) => {
+    await waitForImageViewerReady();
+    await viewerWindow.setTitle(`mint - ${current.name}`);
+    await viewerWindow.emit("mint://viewer-session", { sessionId });
+    await viewerWindow.show();
+    await viewerWindow.setFocus();
   });
 }
 

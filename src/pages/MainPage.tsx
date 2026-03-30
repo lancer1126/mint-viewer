@@ -3,7 +3,7 @@ import { getCurrentWindow } from "@tauri-apps/api/window";
 import { uiConfig } from "@/config";
 import { useDirectoryStore } from "@/hooks/useDirectoryStore";
 import { useImageBrowser } from "@/hooks/useImageBrowser";
-import { openImageDetailWindow, pickDirectory, revealDirectory, showErrorPopup } from "@/services/tauriApi";
+import { openImageDetailWindow, pickDirectory, revealDirectory, showErrorPopup, warmUpImageDetailWindow } from "@/services/tauriApi";
 import type { FolderContextMenuState, PathTipState, ViewerImage } from "@/types";
 import { Sidebar } from "@/components/layout/Sidebar";
 import { TitleBar } from "@/components/layout/TitleBar";
@@ -83,6 +83,12 @@ export function MainPage() {
   useEffect(() => {
     gridRef.current?.scrollTo({ top: 0, behavior: "auto" });
   }, [currentDir]);
+
+  useEffect(() => {
+    void warmUpImageDetailWindow().catch(() => {
+      // Warm-up failure should not block the main page.
+    });
+  }, []);
 
   useEffect(() => {
     if (!folderSortOpen) return;
