@@ -5,11 +5,12 @@ type FolderContextMenuProps = {
   x: number;
   y: number;
   onOpenDirectory: () => Promise<void>;
+  onRename?: () => void;
   onRemove: () => void;
   menuRef: RefObject<HTMLDivElement | null>;
 };
 
-export function FolderContextMenu({ visible, x, y, onOpenDirectory, onRemove, menuRef }: FolderContextMenuProps) {
+export function FolderContextMenu({ visible, x, y, onOpenDirectory, onRename, onRemove, menuRef }: FolderContextMenuProps) {
   if (!visible) return null;
 
   return (
@@ -25,6 +26,15 @@ export function FolderContextMenu({ visible, x, y, onOpenDirectory, onRemove, me
       >
         打开目录
       </button>
+      {onRename && (
+        <button
+          type="button"
+          onClick={onRename}
+          className="block w-full px-3 py-2 text-left text-sm font-medium text-slate-700 transition-colors duration-150 hover:bg-black/[0.08] hover:text-slate-900"
+        >
+          修改名称
+        </button>
+      )}
       <button
         type="button"
         onClick={onRemove}

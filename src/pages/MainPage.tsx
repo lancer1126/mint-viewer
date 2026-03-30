@@ -14,6 +14,7 @@ import { EmptyState } from "@/components/gallery/EmptyState";
 import { LoadingOverlay } from "@/components/overlay/LoadingOverlay";
 import { PathTooltip } from "@/components/overlay/PathTooltip";
 import { FolderContextMenu } from "@/components/overlay/FolderContextMenu";
+import { RenameFolderDialog } from "@/components/overlay/RenameFolderDialog";
 
 const appWindow = getCurrentWindow();
 const INITIAL_RENDER_COUNT = 180;
@@ -58,6 +59,11 @@ export function MainPage() {
     path: "",
     source: "folders",
   });
+  const [renameDialog, setRenameDialog] = useState({
+    visible: false,
+    path: "",
+    value: "",
+  });
 
   const folderSortRef = useRef<HTMLDivElement>(null);
   const folderMenuRef = useRef<HTMLDivElement>(null);
@@ -66,7 +72,7 @@ export function MainPage() {
   const zoomTargetRef = useRef(GRID_ZOOM_DEFAULT);
 
   const { images, currentDir, isLoadingImages, loadImagesForDirectory, clearCurrentDirectory } = useImageBrowser();
-  const { recentItems, sortedFolderDirs, rememberFolderDirectory, rememberRecentVisit, removeFolderDirectory, removeRecentVisit } =
+  const { recentItems, sortedFolderDirs, rememberFolderDirectory, rememberRecentVisit, removeFolderDirectory, removeRecentVisit, renameDirectory } =
     useDirectoryStore(folderSortMode);
 
   const sidebarVisualWidth = sidebarCollapsed ? SIDEBAR_COLLAPSED : sidebarWidth;
@@ -173,7 +179,7 @@ export function MainPage() {
     e.preventDefault();
     setPathTip((prev) => ({ ...prev, visible: false }));
     const menuWidth = 112;
-    const menuHeight = 78;
+    const menuHeight = source === "folders" ? 112 : 78;
     const offsetX = 14;
     const offsetY = 14;
     const nextX = Math.min(e.clientX + offsetX, window.innerWidth - menuWidth - 8);
@@ -197,6 +203,32 @@ export function MainPage() {
       clearCurrentDirectory();
     }
     setFolderMenu((prev) => ({ ...prev, visible: false }));
+  }
+
+  function renameFolderDisplayName(path: string) {
+    const target = sortedFolderDirs.find((item) => item.path === path);
+    if (!target) return;
+    setRenameDialog({
+      visible: true,
+      path,
+      value: target.name,
+    });
+    setFolderMenu((prev) => ({ ...prev, visible: false }));
+  }
+
+  function closeRenameDialog() {
+    setRenameDialog((prev) => ({ ...prev, visible: false }));
+  }
+
+  async function confirmRenameDialog() {
+    const trimmed = renameDialog.value.trim();
+    if (!trimmed) {
+      await showErrorPopup("名称不能为空。");
+      return;
+    }
+
+    renameDirectory(renameDialog.path, trimmed);
+    setRenameDialog((prev) => ({ ...prev, visible: false }));
   }
 
   async function selectDirectory(dirPath: string) {
@@ -388,7 +420,18 @@ export function MainPage() {
           setFolderMenu((prev) => ({ ...prev, visible: false }));
           await openDirectoryInExplorer(path);
         }}
+        onRename={folderMenu.source === "folders" ? () => renameFolderDisplayName(folderMenu.path) : undefined}
         onRemove={() => removeDirectory(folderMenu.path, folderMenu.source)}
+      />
+
+      <RenameFolderDialog
+        visible={renameDialog.visible}
+        value={renameDialog.value}
+        onValueChange={(value) => setRenameDialog((prev) => ({ ...prev, value }))}
+        onCancel={closeRenameDialog}
+        onConfirm={() => {
+          void confirmRenameDialog();
+        }}
       />
     </div>
   );

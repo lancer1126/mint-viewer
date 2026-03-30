@@ -50,16 +50,29 @@ export function useDirectoryStore(folderSortMode: "添加时间" | "名称") {
 
   const recentItems = useMemo(() => recentVisits.slice(0, MAX_RECENT_VISITS), [recentVisits]);
 
+  function preserveAlias(path: string, fallback: RecentDirectory) {
+    const existing = [...folderDirs, ...recentVisits].find((item) => item.path === path);
+    if (!existing) {
+      return fallback;
+    }
+
+    return {
+      ...fallback,
+      name: existing.name,
+      actualName: existing.actualName || fallback.actualName,
+    };
+  }
+
   function rememberFolderDirectory(path: string) {
     setFolderDirs((prev) => {
-      const next = toRecentDirectory(path);
+      const next = preserveAlias(path, toRecentDirectory(path));
       return [next, ...prev.filter((item) => item.path !== path)].slice(0, MAX_FOLDER_DIRS);
     });
   }
 
   function rememberRecentVisit(path: string) {
     setRecentVisits((prev) => {
-      const next = toRecentDirectory(path);
+      const next = preserveAlias(path, toRecentDirectory(path));
       return [next, ...prev.filter((item) => item.path !== path)].slice(0, MAX_RECENT_VISITS);
     });
   }
@@ -72,6 +85,14 @@ export function useDirectoryStore(folderSortMode: "添加时间" | "名称") {
     setRecentVisits((prev) => prev.filter((item) => item.path !== path));
   }
 
+  function renameDirectory(path: string, nextName: string) {
+    const applyName = (items: RecentDirectory[]) =>
+      items.map((item) => (item.path === path ? { ...item, name: nextName.trim() || item.actualName } : item));
+
+    setFolderDirs((prev) => applyName(prev));
+    setRecentVisits((prev) => applyName(prev));
+  }
+
   return {
     folderDirs,
     recentItems,
@@ -80,5 +101,6 @@ export function useDirectoryStore(folderSortMode: "添加时间" | "名称") {
     rememberRecentVisit,
     removeFolderDirectory,
     removeRecentVisit,
+    renameDirectory,
   };
 }

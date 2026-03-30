@@ -15,7 +15,11 @@ function sanitizeRecords(input: unknown): RecentDirectory[] {
     .filter((item) => Boolean((item as RecentDirectory)?.path))
     .map((item) => ({
       path: (item as RecentDirectory).path,
-      name: (item as RecentDirectory).name || getDirName((item as RecentDirectory).path),
+      actualName: (item as RecentDirectory).actualName || getDirName((item as RecentDirectory).path),
+      name:
+        (item as RecentDirectory).name ||
+        (item as RecentDirectory).actualName ||
+        getDirName((item as RecentDirectory).path),
       lastOpenedAt: Number.isFinite((item as RecentDirectory).lastOpenedAt)
         ? (item as RecentDirectory).lastOpenedAt
         : Date.now(),
@@ -47,9 +51,11 @@ export function saveRecentVisits(items: RecentDirectory[]) {
 }
 
 export function toRecentDirectory(path: string): RecentDirectory {
+  const actualName = getDirName(path);
   return {
     path,
-    name: getDirName(path),
+    name: actualName,
+    actualName,
     lastOpenedAt: Date.now(),
   };
 }
