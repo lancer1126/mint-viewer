@@ -31,7 +31,7 @@ export function MainPage() {
   const [hoveredMenu, setHoveredMenu] = useState<string | null>(null);
   const [sidebarWidth, setSidebarWidth] = useState(SIDEBAR_DEFAULT);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
-  const [viewMode, setViewMode] = useState("网格视图");
+  const [viewMode, setViewMode] = useState("网格");
   const [sortMode, setSortMode] = useState("修改时间");
   const [folderSortMode, setFolderSortMode] = useState<"添加时间" | "名称">("添加时间");
   const [folderSortOpen, setFolderSortOpen] = useState(false);

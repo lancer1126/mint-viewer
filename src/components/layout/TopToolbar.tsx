@@ -32,7 +32,7 @@ export function TopToolbar({
         <FlatSelect
           prefix="视图："
           value={viewMode}
-          options={["网格视图", "列表视图"]}
+          options={["网格", "列表"]}
           open={viewOpen}
           onOpenChange={onViewOpenChange}
           onChange={onViewModeChange}

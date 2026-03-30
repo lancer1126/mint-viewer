@@ -110,6 +110,24 @@ fn scan_images(dir: String, limit: Option<usize>) -> Result<Vec<ImageEntry>, Str
     Ok(items)
 }
 
+#[tauri::command]
+fn apply_mica_to_window(app: tauri::AppHandle, label: String) -> Result<(), String> {
+    #[cfg(target_os = "windows")]
+    {
+        let window = app
+            .get_webview_window(&label)
+            .ok_or_else(|| format!("窗口不存在: {label}"))?;
+        apply_mica(&window, Some(false)).map_err(|err| err.to_string())?;
+    }
+
+    #[cfg(not(target_os = "windows"))]
+    {
+        let _ = (app, label);
+    }
+
+    Ok(())
+}
+
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
     tauri::Builder::default()
@@ -123,7 +141,7 @@ pub fn run() {
 
             Ok(())
         })
-        .invoke_handler(tauri::generate_handler![scan_images])
+        .invoke_handler(tauri::generate_handler![scan_images, apply_mica_to_window])
         .run(tauri::generate_context!())
         .expect("error while running tauri application");
 }

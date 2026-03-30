@@ -10,7 +10,7 @@ export const uiConfig: AppConfig = {
       // 用户拖拽调整时允许的最小宽度。
       minWidth: 180,
       // 用户拖拽调整时允许的最大宽度。
-      maxWidth: 360,
+      maxWidth: 560,
       // 侧边栏在折叠状态下的宽度。
       collapsedWidth: 48,
     },

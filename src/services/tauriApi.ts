@@ -14,6 +14,7 @@ const IMAGE_VIEWER_BASE_QUERY = new URLSearchParams({
 let viewerWindowPromise: Promise<Window> | null = null;
 let viewerReadyPromise: Promise<void> | null = null;
 let viewerReady = false;
+let viewerMicaPromise: Promise<void> | null = null;
 
 export async function pickDirectory() {
   return open({
@@ -60,6 +61,18 @@ function getImageViewerUrl(sessionId?: string): string {
   return `${window.location.pathname}?${params.toString()}`;
 }
 
+async function ensureImageViewerMica() {
+  if (!viewerMicaPromise) {
+    viewerMicaPromise = invoke("apply_mica_to_window", { label: IMAGE_VIEWER_LABEL })
+      .then(() => undefined)
+      .catch((error) => {
+        viewerMicaPromise = null;
+        throw error;
+      });
+  }
+  await viewerMicaPromise;
+}
+
 async function ensureImageViewerWindow(): Promise<Window> {
   if (viewerWindowPromise) {
     return viewerWindowPromise;
@@ -81,7 +94,7 @@ async function ensureImageViewerWindow(): Promise<Window> {
         center: true,
         resizable: true,
         decorations: false,
-        transparent: false,
+        transparent: true,
         visible: false,
         focus: false,
       });
@@ -142,6 +155,11 @@ export function openImageDetailWindow(images: ViewerImage[], initialIndex: numbe
     await viewerWindow.setTitle(`mint - ${current.name}`);
     await viewerWindow.emit("mint://viewer-session", { sessionId });
     await viewerWindow.show();
+    try {
+      await ensureImageViewerMica();
+    } catch {
+      // Mica is a visual enhancement only; opening the image should still succeed.
+    }
     await viewerWindow.setFocus();
   });
 }
