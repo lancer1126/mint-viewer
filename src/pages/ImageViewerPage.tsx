@@ -161,7 +161,7 @@ export function ImageViewerPage() {
       <button
         type="button"
         onClick={() => void closeViewerWindow()}
-        className="absolute right-4 top-4 z-20 inline-flex h-9 w-9 items-center justify-center text-slate-600/90 transition-all duration-200 hover:-translate-y-0.5 hover:scale-[1.08] hover:text-slate-950"
+        className="absolute right-2 top-1 z-20 inline-flex h-9 w-9 items-center justify-center text-slate-600/90 transition-all duration-200 hover:-translate-y-0.5 hover:scale-[1.08] hover:text-slate-950"
         aria-label="关闭窗口"
       >
         <X size={18} />

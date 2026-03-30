@@ -7,11 +7,13 @@ type TopToolbarProps = {
   viewOpen: boolean;
   sortOpen: boolean;
   keyword: string;
+  zoomValue: number;
   onViewModeChange: (value: string) => void;
   onSortModeChange: (value: string) => void;
   onViewOpenChange: (open: boolean) => void;
   onSortOpenChange: (open: boolean) => void;
   onKeywordChange: (value: string) => void;
+  onZoomChange: (value: number) => void;
 };
 
 export function TopToolbar({
@@ -20,12 +22,16 @@ export function TopToolbar({
   viewOpen,
   sortOpen,
   keyword,
+  zoomValue,
   onViewModeChange,
   onSortModeChange,
   onViewOpenChange,
   onSortOpenChange,
   onKeywordChange,
+  onZoomChange,
 }: TopToolbarProps) {
+  const isListView = viewMode === "列表";
+
   return (
     <header className="relative z-40 flex min-h-[48px] items-center justify-between gap-3 px-4">
       <div className="flex items-center gap-1">
@@ -45,15 +51,25 @@ export function TopToolbar({
           onOpenChange={onSortOpenChange}
           onChange={onSortModeChange}
         />
-        <div className="ml-0.5 flex shrink-0 items-center gap-1.5 rounded-xl bg-transparent px-2.5 py-1.5 transition hover:bg-black/[0.05]">
+        <div
+          className={`ml-0.5 flex shrink-0 items-center gap-1.5 rounded-xl px-2.5 py-1.5 transition ${
+            isListView ? "bg-black/[0.02] opacity-45" : "bg-transparent hover:bg-black/[0.05]"
+          }`}
+        >
           <span className="shrink-0 whitespace-nowrap text-xs text-slate-500">缩放</span>
           <input
             type="range"
-            min={80}
-            max={240}
-            defaultValue={160}
-            className="h-1 w-20 cursor-pointer appearance-none rounded-full bg-slate-300/45 accent-slate-600"
+            min={50}
+            max={200}
+            step={10}
+            value={zoomValue}
+            onChange={(e) => onZoomChange(Number(e.target.value))}
+            disabled={isListView}
+            className="h-1 w-20 cursor-pointer appearance-none rounded-full bg-slate-300/45 accent-slate-600 disabled:cursor-default"
           />
+          <span className="w-11 shrink-0 text-right text-[11px] tabular-nums text-slate-500">
+            {zoomValue}%
+          </span>
         </div>
       </div>
 

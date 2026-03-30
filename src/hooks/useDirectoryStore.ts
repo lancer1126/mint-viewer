@@ -68,6 +68,10 @@ export function useDirectoryStore(folderSortMode: "添加时间" | "名称") {
     setFolderDirs((prev) => prev.filter((item) => item.path !== path));
   }
 
+  function removeRecentVisit(path: string) {
+    setRecentVisits((prev) => prev.filter((item) => item.path !== path));
+  }
+
   return {
     folderDirs,
     recentItems,
@@ -75,5 +79,6 @@ export function useDirectoryStore(folderSortMode: "添加时间" | "名称") {
     rememberFolderDirectory,
     rememberRecentVisit,
     removeFolderDirectory,
+    removeRecentVisit,
   };
 }

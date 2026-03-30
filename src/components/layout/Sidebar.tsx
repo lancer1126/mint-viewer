@@ -25,7 +25,7 @@ type SidebarProps = {
   onSetFolderSortMode: (mode: "添加时间" | "名称") => void;
   onShowPathTip: (path: string, event: ReactMouseEvent<HTMLElement>) => void;
   onHidePathTip: () => void;
-  onOpenFolderContextMenu: (e: ReactMouseEvent<HTMLElement>, path: string) => void;
+  onOpenFolderContextMenu: (e: ReactMouseEvent<HTMLElement>, path: string, source: "folders" | "recent") => void;
   onOpenDirectoryInExplorer: (dirPath: string) => Promise<void>;
   onSelectDirectory: (dirPath: string) => Promise<void>;
 };
@@ -193,7 +193,7 @@ export function Sidebar({
                         key={dir.path}
                         onMouseEnter={(e) => onShowPathTip(dir.path, e)}
                         onMouseLeave={onHidePathTip}
-                        onContextMenu={(e) => onOpenFolderContextMenu(e, dir.path)}
+                        onContextMenu={(e) => onOpenFolderContextMenu(e, dir.path, "folders")}
                         className={`group flex items-center gap-1 rounded-lg pr-1 transition hover:bg-black/[0.03] ${
                           currentDir === dir.path ? "bg-black/[0.04]" : ""
                         }`}
@@ -230,6 +230,7 @@ export function Sidebar({
                         key={`recent-${dir.path}`}
                         onMouseEnter={(e) => onShowPathTip(dir.path, e)}
                         onMouseLeave={onHidePathTip}
+                        onContextMenu={(e) => onOpenFolderContextMenu(e, dir.path, "recent")}
                         className={`group flex items-center gap-1 rounded-lg pr-1 transition hover:bg-black/[0.03] ${
                           currentDir === dir.path ? "bg-black/[0.04]" : ""
                         }`}

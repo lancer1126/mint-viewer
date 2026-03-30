@@ -23,3 +23,18 @@ export function colorClassByExt(ext: string): string {
   };
   return map[ext] ?? "from-orange-500 to-orange-300";
 }
+
+export function formatModifiedTime(timestamp: number): string {
+  if (!Number.isFinite(timestamp) || timestamp <= 0) {
+    return "未知";
+  }
+
+  return new Intl.DateTimeFormat("zh-CN", {
+    year: "numeric",
+    month: "2-digit",
+    day: "2-digit",
+    hour: "2-digit",
+    minute: "2-digit",
+    hour12: false,
+  }).format(new Date(timestamp));
+}

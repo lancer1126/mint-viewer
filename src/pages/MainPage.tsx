@@ -18,6 +18,16 @@ import { FolderContextMenu } from "@/components/overlay/FolderContextMenu";
 const appWindow = getCurrentWindow();
 const INITIAL_RENDER_COUNT = 180;
 const RENDER_STEP = 180;
+const GRID_ZOOM_MIN = 50;
+const GRID_ZOOM_MAX = 200;
+const GRID_ZOOM_DEFAULT = 100;
+
+function compareByName(a: { name: string }, b: { name: string }) {
+  return a.name.localeCompare(b.name, "zh-Hans-CN", {
+    numeric: true,
+    sensitivity: "base",
+  });
+}
 
 export function MainPage() {
   const SIDEBAR_MIN = uiConfig.layout.sidebar.minWidth;
@@ -32,26 +42,31 @@ export function MainPage() {
   const [sidebarWidth, setSidebarWidth] = useState(SIDEBAR_DEFAULT);
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false);
   const [viewMode, setViewMode] = useState("网格");
-  const [sortMode, setSortMode] = useState("修改时间");
+  const [sortMode, setSortMode] = useState("名称");
   const [folderSortMode, setFolderSortMode] = useState<"添加时间" | "名称">("添加时间");
   const [folderSortOpen, setFolderSortOpen] = useState(false);
   const [viewOpen, setViewOpen] = useState(false);
   const [sortOpen, setSortOpen] = useState(false);
   const [visibleCount, setVisibleCount] = useState(INITIAL_RENDER_COUNT);
+  const [gridZoom, setGridZoom] = useState(GRID_ZOOM_DEFAULT);
+  const [gridZoomDraft, setGridZoomDraft] = useState(GRID_ZOOM_DEFAULT);
   const [pathTip, setPathTip] = useState<PathTipState>({ visible: false, text: "", x: 0, y: 0 });
   const [folderMenu, setFolderMenu] = useState<FolderContextMenuState>({
     visible: false,
     x: 0,
     y: 0,
     path: "",
+    source: "folders",
   });
 
   const folderSortRef = useRef<HTMLDivElement>(null);
   const folderMenuRef = useRef<HTMLDivElement>(null);
   const gridRef = useRef<HTMLElement>(null);
+  const zoomFrameRef = useRef<number | null>(null);
+  const zoomTargetRef = useRef(GRID_ZOOM_DEFAULT);
 
   const { images, currentDir, isLoadingImages, loadImagesForDirectory, clearCurrentDirectory } = useImageBrowser();
-  const { recentItems, sortedFolderDirs, rememberFolderDirectory, rememberRecentVisit, removeFolderDirectory } =
+  const { recentItems, sortedFolderDirs, rememberFolderDirectory, rememberRecentVisit, removeFolderDirectory, removeRecentVisit } =
     useDirectoryStore(folderSortMode);
 
   const sidebarVisualWidth = sidebarCollapsed ? SIDEBAR_COLLAPSED : sidebarWidth;
@@ -62,13 +77,18 @@ export function MainPage() {
     const sorted = [...filtered];
 
     if (sortMode === "名称") {
-      sorted.sort((a, b) => a.name.localeCompare(b.name, "zh-Hans-CN"));
+      sorted.sort((a, b) => compareByName(a, b) || b.modifiedMs - a.modifiedMs);
     } else if (sortMode === "大小") {
-      sorted.sort((a, b) => b.size - a.size);
+      sorted.sort((a, b) => b.size - a.size || compareByName(a, b));
     } else if (sortMode === "类型") {
-      sorted.sort((a, b) => a.ext.localeCompare(b.ext));
+      sorted.sort(
+        (a, b) =>
+          a.ext.localeCompare(b.ext, "en", { sensitivity: "base" }) ||
+          compareByName(a, b) ||
+          b.modifiedMs - a.modifiedMs,
+      );
     } else {
-      sorted.sort((a, b) => b.modifiedMs - a.modifiedMs);
+      sorted.sort((a, b) => b.modifiedMs - a.modifiedMs || compareByName(a, b));
     }
 
     return sorted;
@@ -83,6 +103,14 @@ export function MainPage() {
   useEffect(() => {
     gridRef.current?.scrollTo({ top: 0, behavior: "auto" });
   }, [currentDir]);
+
+  useEffect(() => {
+    return () => {
+      if (zoomFrameRef.current !== null) {
+        window.clearTimeout(zoomFrameRef.current);
+      }
+    };
+  }, []);
 
   useEffect(() => {
     void warmUpImageDetailWindow().catch(() => {
@@ -141,7 +169,7 @@ export function MainPage() {
     setPathTip((prev) => ({ ...prev, visible: false }));
   }
 
-  function openFolderContextMenu(e: ReactMouseEvent<HTMLElement>, path: string) {
+  function openFolderContextMenu(e: ReactMouseEvent<HTMLElement>, path: string, source: "folders" | "recent") {
     e.preventDefault();
     setPathTip((prev) => ({ ...prev, visible: false }));
     const menuWidth = 112;
@@ -155,11 +183,16 @@ export function MainPage() {
       x: Math.max(8, nextX),
       y: Math.max(8, nextY),
       path,
+      source,
     });
   }
 
-  function removeDirectory(path: string) {
-    removeFolderDirectory(path);
+  function removeDirectory(path: string, source: "folders" | "recent") {
+    if (source === "recent") {
+      removeRecentVisit(path);
+    } else {
+      removeFolderDirectory(path);
+    }
     if (currentDir === path) {
       clearCurrentDirectory();
     }
@@ -216,6 +249,21 @@ export function MainPage() {
     if (nearBottom && visibleCount < displayedImages.length) {
       setVisibleCount((prev) => Math.min(prev + RENDER_STEP, displayedImages.length));
     }
+  }
+
+  function handleGridZoomChange(value: number) {
+    const next = Math.max(GRID_ZOOM_MIN, Math.min(GRID_ZOOM_MAX, value));
+    setGridZoomDraft(next);
+    zoomTargetRef.current = next;
+
+    if (zoomFrameRef.current !== null) {
+      return;
+    }
+
+    zoomFrameRef.current = window.setTimeout(() => {
+      zoomFrameRef.current = null;
+      setGridZoom(zoomTargetRef.current);
+    }, 32);
   }
 
   return (
@@ -285,6 +333,7 @@ export function MainPage() {
                 viewOpen={viewOpen}
                 sortOpen={sortOpen}
                 keyword={keyword}
+                zoomValue={gridZoomDraft}
                 onViewModeChange={setViewMode}
                 onSortModeChange={setSortMode}
                 onViewOpenChange={(open) => {
@@ -296,6 +345,7 @@ export function MainPage() {
                   if (open) setViewOpen(false);
                 }}
                 onKeywordChange={setKeyword}
+                onZoomChange={handleGridZoomChange}
               />
 
               <ImageGrid
@@ -304,6 +354,8 @@ export function MainPage() {
                 isLoadingImages={isLoadingImages}
                 gridRef={gridRef}
                 onScroll={handleGridScroll}
+                viewMode={viewMode}
+                zoomValue={gridZoom}
                 onImageClick={async (_item, index) => {
                   try {
                     const viewerImages: ViewerImage[] = displayedImages.map((img) => ({
@@ -336,7 +388,7 @@ export function MainPage() {
           setFolderMenu((prev) => ({ ...prev, visible: false }));
           await openDirectoryInExplorer(path);
         }}
-        onRemove={() => removeDirectory(folderMenu.path)}
+        onRemove={() => removeDirectory(folderMenu.path, folderMenu.source)}
       />
     </div>
   );

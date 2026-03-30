@@ -19,4 +19,5 @@ export type FolderContextMenuState = {
   x: number;
   y: number;
   path: string;
+  source: "folders" | "recent";
 };
