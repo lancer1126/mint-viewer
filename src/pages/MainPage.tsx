@@ -3,8 +3,8 @@ import { getCurrentWindow } from "@tauri-apps/api/window";
 import { uiConfig } from "@/config";
 import { useDirectoryStore } from "@/hooks/useDirectoryStore";
 import { useImageBrowser } from "@/hooks/useImageBrowser";
-import { openImageDetailWindow, pickDirectory, revealDirectory, showErrorPopup, warmUpImageDetailWindow } from "@/services/tauriApi";
-import type { FolderContextMenuState, PathTipState, ViewerImage } from "@/types";
+import { openImageDetailWindow, pickDirectory, revealDirectory, showErrorPopup, shutdownApplication, warmUpImageDetailWindow } from "@/services/tauriApi";
+import type { FolderContextMenuState, ImageContextMenuState, PathTipState, ViewerImage } from "@/types";
 import { Sidebar } from "@/components/layout/Sidebar";
 import { TitleBar } from "@/components/layout/TitleBar";
 import { TopToolbar } from "@/components/layout/TopToolbar";
@@ -14,6 +14,7 @@ import { EmptyState } from "@/components/gallery/EmptyState";
 import { LoadingOverlay } from "@/components/overlay/LoadingOverlay";
 import { PathTooltip } from "@/components/overlay/PathTooltip";
 import { FolderContextMenu } from "@/components/overlay/FolderContextMenu";
+import { ImageContextMenu } from "@/components/overlay/ImageContextMenu";
 import { RenameFolderDialog } from "@/components/overlay/RenameFolderDialog";
 
 const appWindow = getCurrentWindow();
@@ -59,6 +60,12 @@ export function MainPage() {
     path: "",
     source: "folders",
   });
+  const [imageMenu, setImageMenu] = useState<ImageContextMenuState>({
+    visible: false,
+    x: 0,
+    y: 0,
+    path: "",
+  });
   const [renameDialog, setRenameDialog] = useState({
     visible: false,
     path: "",
@@ -67,6 +74,7 @@ export function MainPage() {
 
   const folderSortRef = useRef<HTMLDivElement>(null);
   const folderMenuRef = useRef<HTMLDivElement>(null);
+  const imageMenuRef = useRef<HTMLDivElement>(null);
   const gridRef = useRef<HTMLElement>(null);
   const zoomFrameRef = useRef<number | null>(null);
   const zoomTargetRef = useRef(GRID_ZOOM_DEFAULT);
@@ -145,6 +153,17 @@ export function MainPage() {
     document.addEventListener("mousedown", handleClickOutside);
     return () => document.removeEventListener("mousedown", handleClickOutside);
   }, [folderMenu.visible]);
+
+  useEffect(() => {
+    if (!imageMenu.visible) return;
+    function handleClickOutside(e: MouseEvent) {
+      if (!imageMenuRef.current?.contains(e.target as Node)) {
+        setImageMenu((prev) => ({ ...prev, visible: false }));
+      }
+    }
+    document.addEventListener("mousedown", handleClickOutside);
+    return () => document.removeEventListener("mousedown", handleClickOutside);
+  }, [imageMenu.visible]);
 
   async function addDirectory() {
     const selected = await pickDirectory();
@@ -244,7 +263,7 @@ export function MainPage() {
   }
 
   async function closeWindow() {
-    await appWindow.close();
+    await shutdownApplication();
   }
 
   async function startWindowDrag() {
@@ -281,6 +300,31 @@ export function MainPage() {
     if (nearBottom && visibleCount < displayedImages.length) {
       setVisibleCount((prev) => Math.min(prev + RENDER_STEP, displayedImages.length));
     }
+  }
+
+  async function openImageInExplorer(imagePath: string) {
+    try {
+      await revealDirectory(imagePath);
+    } catch (err) {
+      const msg = err instanceof Error ? err.message : String(err);
+      await showErrorPopup(`打开图片位置失败：${msg}`);
+    }
+  }
+
+  function openImageContextMenu(e: ReactMouseEvent<HTMLElement>, imagePath: string) {
+    e.preventDefault();
+    const menuWidth = 132;
+    const menuHeight = 44;
+    const offsetX = 14;
+    const offsetY = 14;
+    const nextX = Math.min(e.clientX + offsetX, window.innerWidth - menuWidth - 8);
+    const nextY = Math.min(e.clientY + offsetY, window.innerHeight - menuHeight - 8);
+    setImageMenu({
+      visible: true,
+      x: Math.max(8, nextX),
+      y: Math.max(8, nextY),
+      path: imagePath,
+    });
   }
 
   function handleGridZoomChange(value: number) {
@@ -388,6 +432,9 @@ export function MainPage() {
                 onScroll={handleGridScroll}
                 viewMode={viewMode}
                 zoomValue={gridZoom}
+                onOpenImageContextMenu={(event, item) => {
+                  openImageContextMenu(event, item.path);
+                }}
                 onImageClick={async (_item, index) => {
                   try {
                     const viewerImages: ViewerImage[] = displayedImages.map((img) => ({
@@ -422,6 +469,18 @@ export function MainPage() {
         }}
         onRename={folderMenu.source === "folders" ? () => renameFolderDisplayName(folderMenu.path) : undefined}
         onRemove={() => removeDirectory(folderMenu.path, folderMenu.source)}
+      />
+
+      <ImageContextMenu
+        visible={imageMenu.visible}
+        x={imageMenu.x}
+        y={imageMenu.y}
+        menuRef={imageMenuRef}
+        onRevealImage={async () => {
+          const path = imageMenu.path;
+          setImageMenu((prev) => ({ ...prev, visible: false }));
+          await openImageInExplorer(path);
+        }}
       />
 
       <RenameFolderDialog

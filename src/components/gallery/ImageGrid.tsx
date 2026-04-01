@@ -1,4 +1,4 @@
-import type { RefObject, UIEvent } from "react";
+import type { MouseEvent as ReactMouseEvent, RefObject, UIEvent } from "react";
 import { convertFileSrc } from "@tauri-apps/api/core";
 import type { ImageEntry } from "@/types";
 import { colorClassByExt, formatModifiedTime, formatSize } from "@/lib/image-format";
@@ -10,6 +10,7 @@ type ImageGridProps = {
   gridRef: RefObject<HTMLElement | null>;
   onScroll: (e: UIEvent<HTMLElement>) => void;
   onImageClick: (item: ImageEntry, index: number) => void;
+  onOpenImageContextMenu: (event: ReactMouseEvent<HTMLElement>, item: ImageEntry) => void;
   viewMode: string;
   zoomValue: number;
 };
@@ -21,6 +22,7 @@ export function ImageGrid({
   gridRef,
   onScroll,
   onImageClick,
+  onOpenImageContextMenu,
   viewMode,
   zoomValue,
 }: ImageGridProps) {
@@ -57,6 +59,7 @@ export function ImageGrid({
           <article
             key={item.path}
             onClick={() => onImageClick(item, index)}
+            onContextMenu={(e) => onOpenImageContextMenu(e, item)}
             className="group flex min-h-[88px] items-center gap-4 overflow-hidden rounded-[20px] border border-black/6 bg-white/34 px-3 py-3 shadow-[0_10px_24px_rgba(100,116,139,0.09)] transition duration-200 hover:bg-white/50"
           >
             <div
@@ -91,6 +94,7 @@ export function ImageGrid({
             key={item.path}
             className="flex flex-col overflow-hidden rounded-[22px] border border-black/8 bg-white/42 shadow-[0_10px_24px_rgba(100,116,139,0.12)] transition duration-200 hover:-translate-y-0.5 hover:bg-white/50"
             style={{ height: `${cardHeight}px` }}
+            onContextMenu={(e) => onOpenImageContextMenu(e, item)}
           >
             <div
               className={`w-full overflow-hidden bg-gradient-to-br ${colorClassByExt(item.ext)}`}

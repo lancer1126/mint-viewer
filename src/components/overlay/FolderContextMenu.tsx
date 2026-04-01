@@ -16,7 +16,7 @@ export function FolderContextMenu({ visible, x, y, onOpenDirectory, onRename, on
   return (
     <div
       ref={menuRef}
-      className="context-menu-enter fixed z-[1000] min-w-[118px] overflow-hidden rounded-xl border border-white/48 bg-[rgba(250,248,244,0.58)] shadow-[0_14px_34px_rgba(148,163,184,0.18),0_2px_10px_rgba(255,255,255,0.2)_inset] backdrop-blur-2xl"
+      className="context-menu-enter fixed z-[1000] min-w-[118px] overflow-hidden rounded-xl border border-white/52 bg-[rgba(250,248,244,0.84)] shadow-[0_14px_34px_rgba(148,163,184,0.18),0_2px_10px_rgba(255,255,255,0.24)_inset] backdrop-blur-2xl"
       style={{ left: `${x}px`, top: `${y}px` }}
     >
       <button

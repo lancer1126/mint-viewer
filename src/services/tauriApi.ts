@@ -2,7 +2,7 @@ import { invoke } from "@tauri-apps/api/core";
 import { message, open } from "@tauri-apps/plugin-dialog";
 import { revealItemInDir } from "@tauri-apps/plugin-opener";
 import { WebviewWindow } from "@tauri-apps/api/webviewWindow";
-import { getCurrentWindow, Window } from "@tauri-apps/api/window";
+import { getAllWindows, getCurrentWindow, Window } from "@tauri-apps/api/window";
 import type { ImageEntry, ViewerImage } from "@/types";
 
 const IMAGE_VIEWER_LABEL = "image-viewer";
@@ -141,6 +141,17 @@ async function waitForImageViewerReady(): Promise<void> {
 export async function warmUpImageDetailWindow() {
   await ensureImageViewerWindow();
   await waitForImageViewerReady();
+}
+
+export async function shutdownApplication() {
+  const windows = await getAllWindows();
+  await Promise.all(
+    windows.map((win) =>
+      win.destroy().catch(() => {
+        // Ignore already-closed windows while shutting down the app.
+      }),
+    ),
+  );
 }
 
 export function openImageDetailWindow(images: ViewerImage[], initialIndex: number): Promise<void> {

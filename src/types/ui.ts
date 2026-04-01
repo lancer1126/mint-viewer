@@ -21,3 +21,10 @@ export type FolderContextMenuState = {
   path: string;
   source: "folders" | "recent";
 };
+
+export type ImageContextMenuState = {
+  visible: boolean;
+  x: number;
+  y: number;
+  path: string;
+};

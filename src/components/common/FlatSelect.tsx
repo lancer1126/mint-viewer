@@ -26,7 +26,7 @@ export function FlatSelect({ prefix, value, options, open, onOpenChange, onChang
         <ChevronRight size={16} strokeWidth={2} className="shrink-0 rotate-90" />
       </button>
       {open && (
-        <div className="absolute left-0 top-[calc(100%+6px)] z-50 w-full overflow-hidden rounded-xl border border-white/48 bg-[rgba(250,248,244,0.58)] shadow-[0_14px_34px_rgba(148,163,184,0.18),0_2px_10px_rgba(255,255,255,0.2)_inset] backdrop-blur-2xl">
+        <div className="absolute left-0 top-[calc(100%+6px)] z-50 w-full overflow-hidden rounded-xl border border-white/52 bg-[rgba(250,248,244,0.84)] shadow-[0_14px_34px_rgba(148,163,184,0.18),0_2px_10px_rgba(255,255,255,0.24)_inset] backdrop-blur-2xl">
           {options.map((item) => (
             <button
               key={item}

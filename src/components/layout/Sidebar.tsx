@@ -165,7 +165,7 @@ export function Sidebar({
                 )}
 
                 {!sidebarCollapsed && item.key === "folders" && folderSortOpen && (
-                  <div className="absolute right-2 top-[calc(100%+2px)] z-40 w-[108px] overflow-hidden rounded-md bg-[rgba(241,237,231,0.9)] shadow-[inset_0_0_0_1px_rgba(148,163,184,0.12),0_8px_18px_rgba(148,163,184,0.12)] backdrop-blur-sm">
+                  <div className="absolute right-2 top-[calc(100%+2px)] z-40 w-[108px] overflow-hidden rounded-md bg-[rgba(241,237,231,0.96)] shadow-[inset_0_0_0_1px_rgba(148,163,184,0.14),0_8px_18px_rgba(148,163,184,0.14)] backdrop-blur-sm">
                     {(["添加时间", "名称"] as const).map((mode) => (
                       <button
                         key={mode}
